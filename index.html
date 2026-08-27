@@ -247,24 +247,26 @@ Private Delivery Service Courier
 
 <script>
 
-function trackShipment() {
-
-const value =
-document.getElementById("trackingInput")
-.value
-.trim()
-.toUpperCase();
-
-const valid =
-value === "DLV-20260826-USA-8261" ||
-value === "UTL-ALM-8261";
-
-document.getElementById("result").style.display =
-valid ? "block" : "none";
-
-document.getElementById("error").style.display =
-valid ? "none" : "block";
-}
+ async function trackShipment() {  const value = document    .getElementById("trackingInput")    .value    .trim()    .toUpperCase();
+  const result = document.getElementById("result");  const error = document.getElementById("error");
+  result.style.display = "none";  error.style.display = "none";
+  if (!value) {    error.textContent = "Please enter a tracking reference.";    error.style.display = "block";    return;  }
+  const SUPABASE_URL =  https://grduuktlntdsxzqjymun.supabase.co;  const SUPABASE_ANON_KEY =  sb_publishable_ComjHfx8UDCLE_Ub_ff_rg_i2LLX5jV;
+  try {    const response = await fetch(      `${SUPABASE_URL}/rest/v1/shipments?tracking_number=eq.${encodeURIComponent(value)}&select=*`,      {        headers: {          apikey: SUPABASE_ANON_KEY,          Authorization: `Bearer ${SUPABASE_ANON_KEY}`        }      }    );
+    if (!response.ok) {      throw new Error("Unable to connect to the shipment database.");    }
+    const shipments = await response.json();
+    if (shipments.length === 0) {      error.textContent = "Reference not found. Please check the tracking reference and try again.";      error.style.display = "block";      return;    }
+    const shipment = shipments[0];
+    result.innerHTML = `      <div class="code">${shipment.tracking_number || value}</div>
+      <div class="status">        ${shipment.status || "Shipment Reference Created"}      </div>
+      <div class="row">        <span>Recipient</span>        <strong>${shipment.customer_name || "—"}</strong>      </div>
+      <div class="row">        <span>Destination</span>        <strong>${shipment.destination || "—"}</strong>      </div>
+      <div class="row">        <span>Shipment Reference</span>        <strong>${shipment.tracking_number || value}</strong>      </div>
+      <div class="row">        <span>Estimated Delivery</span>        <strong>${shipment.estimated_delivery || "—"}</strong>      </div>
+      <h2>Shipment History</h2>
+      <div class="event">        <strong>Shipment reference created</strong><br>        ${shipment.created_at ? new Date(shipment.created_at).toLocaleString() : "—"}      </div>    `;
+    result.style.display = "block";
+  } catch (err) {    error.textContent = err.message;    error.style.display = "block";  }}
 
 </script>
 
