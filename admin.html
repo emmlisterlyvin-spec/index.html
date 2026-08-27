@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shipment Admin Dashboard</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f6f8;
+      margin: 0;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: auto;
+    }
+
+    h1 {
+      color: #222;
+    }
+
+    .card {
+      background: white;
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 15px;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      padding: 12px;
+      box-sizing: border-box;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      margin-top: 6px;
+    }
+
+    textarea {
+      min-height: 80px;
+    }
+
+    label {
+      font-weight: bold;
+    }
+
+    button {
+      padding: 12px 20px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+      margin-top: 15px;
+    }
+
+    .save {
+      background: #1677ff;
+      color: white;
+    }
+
+    .search {
+      background: #333;
+      color: white;
+    }
+
+    #message {
+      margin-top: 15px;
+      font-weight: bold;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+
+    th, td {
+      padding: 10px;
+      border-bottom: 1px solid #ddd;
+      text-align: left;
+    }
+
+    th {
+      background: #eee;
+    }
+
+    @media (max-width: 700px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="container">
+
+  <h1>Shipment Admin Dashboard</h1>
+  <p>Add new shipments and update existing shipments.</p>
+
+  <div class="card">
+
+    <h2>Shipment Details</h2>
+
+    <div class="grid">
+
+      <div>
+        <label>Tracking Number</label>
+        <input id="tracking_number" placeholder="DCS100002">
+      </div>
+
+      <div>
+        <label>Customer Name</label>
+        <input id="customer_name">
+      </div>
+
+      <div>
+        <label>Customer Phone</label>
+        <input id="customer_phone">
+      </div>
+
+      <div>
+        <label>Customer Email</label>
+        <input id="customer_email">
+      </div>
+
+      <div>
+        <label>Sender Name</label>
+        <input id="sender_name">
+      </div>
+
+      <div>
+        <label>Pickup Location</label>
+        <input id="pickup_location">
+      </div>
+
+      <div>
+        <label>Destination</label>
+        <input id="destination">
+      </div>
+
+      <div>
+        <label>Package Description</label>
+        <input id="package_description">
+      </div>
+
+      <div>
+        <label>Package Type</label>
+        <input id="package_type" placeholder="Parcel">
+      </div>
+
+      <div>
+        <label>Weight</label>
+        <input id="weight" placeholder="2 kg">
+      </div>
+
+      <div>
+        <label>Status</label>
+        <select id="status">
+          <option>Pending</option>
+          <option>Processing</option>
+          <option>In Transit</option>
+          <option>Out for Delivery</option>
+          <option>Delivered</option>
+          <option>Delayed</option>
+          <option>Cancelled</option>
+        </select>
+      </div>
+
+      <div>
+        <label>Current Location</label>
+        <input id="current_location">
+      </div>
+
+      <div>
+        <label>Shipment Date</label>
+        <input id="shipment_date" type="date">
+      </div>
+
+      <div>
+        <label>Estimated Delivery</label>
+        <input id="estimated_delivery_date" type="date">
+      </div>
+
+    </div>
+
+    <br>
+
+    <label>Notes</label>
+    <textarea id="notes"></textarea>
+
+    <button class="save" onclick="saveShipment()">
+      Save / Update Shipment
+    </button>
+
+    <div id="message"></div>
+
+  </div>
+
+  <div class="card">
+
+    <h2>Find Shipment</h2>
+
+    <input id="searchTracking" placeholder="Enter tracking number">
+
+    <button class="search" onclick="findShipment()">
+      Search Shipment
+    </button>
+
+  </div>
+
+  <div class="card">
+
+    <h2>Recent Shipments</h2>
+
+    <button class="search" onclick="loadShipments()">
+      Refresh Shipments
+    </button>
+
+    <div id="shipments"></div>
+
+  </div>
+
+</div>
+
+<script>
+
+const SUPABASE_URL =
+"https://grduuktlntdsxzqjymun.supabase.co";
+
+const SUPABASE_KEY =
+ sb_publishable_ComjHfx8UDCLE_Ub_ff_rg_i2LLX5jV;
+
+const supabaseClient =
+supabase.createClient(
+  SUPABASE_URL,
+  SUPABASE_KEY
+);
+
+
+function getFormData() {
+
+  return {
+    tracking_number:
+      document.getElementById("tracking_number").value.trim(),
+
+    customer_name:
+      document.getElementById("customer_name").value.trim(),
+
+    customer_phone:
+      document.getElementById("customer_phone").value.trim(),
+
+    customer_email:
+      document.getElementById("customer_email").value.trim(),
+
+    sender_name:
+      document.getElementById("sender_name").value.trim(),
+
+    pickup_location:
+      document.getElementById("pickup_location").value.trim(),
+
+    destination:
+      document.getElementById("destination").value.trim(),
+
+    package_description:
+      document.getElementById("package_description").value.trim(),
+
+    package_type:
+      document.getElementById("package_type").value.trim(),
+
+    weight:
+      document.getElementById("weight").value.trim(),
+
+    status:
+      document.getElementById("status").value,
+
+    current_location:
+      document.getElementById("current_location").value.trim(),
+
+    shipment_date:
+      document.getElementById("shipment_date").value || null,
+
+    estimated_delivery_date:
+      document.getElementById("estimated_delivery_date").value || null,
+
+    notes:
+      document.getElementById("notes").value.trim()
+  };
+}
+
+
+async function saveShipment() {
+
+  const shipment = getFormData();
+
+  if (!shipment.tracking_number) {
+    showMessage("Please enter a tracking number.", true);
+    return;
+  }
+
+  if (!shipment.customer_name) {
+    showMessage("Please enter the customer name.", true);
+    return;
+  }
+
+  if (!shipment.pickup_location) {
+    showMessage("Please enter the pickup location.", true);
+    return;
+  }
+
+  if (!shipment.destination) {
+    showMessage("Please enter the destination.", true);
+    return;
+  }
+
+
+  const { data: existing, error: searchError } =
+    await supabaseClient
+      .from("shipments")
+      .select("id")
+      .eq("tracking_number", shipment.tracking_number)
+      .maybeSingle();
+
+
+  if (searchError) {
+    showMessage(searchError.message, true);
+    return;
+  }
+
+
+  let result;
+
+
+  if (existing) {
+
+    result = await supabaseClient
+      .from("shipments")
+      .update(shipment)
+      .eq("id", existing.id);
+
+  } else {
+
+    result = await supabaseClient
+      .from("shipments")
+      .insert(shipment);
+
+  }
+
+
+  if (result.error) {
+    showMessage(result.error.message, true);
+    return;
+  }
+
+
+  showMessage(
+    existing
+      ? "Shipment updated successfully!"
+      : "Shipment created successfully!",
+    false
+  );
+
+  loadShipments();
+}
+
+
+async function findShipment() {
+
+  const tracking =
+    document.getElementById("searchTracking").value.trim();
+
+  if (!tracking) {
+    showMessage("Enter a tracking number.", true);
+    return;
+  }
+
+
+  const { data, error } =
+    await supabaseClient
+      .from("shipments")
+      .select("*")
+      .eq("tracking_number", tracking)
+      .maybeSingle();
+
+
+  if (error) {
+    showMessage(error.message, true);
+    return;
+  }
+
+
+  if (!data) {
+    showMessage("Shipment not found.", true);
+    return;
+  }
+
+
+  fillForm(data);
+
+  showMessage(
+    "Shipment loaded. You can now edit it.",
+    false
+  );
+}
+
+
+function fillForm(data) {
+
+  document.getElementById("tracking_number").value =
+    data.tracking_number || "";
+
+  document.getElementById("customer_name").value =
+    data.customer_name || "";
+
+  document.getElementById("customer_phone").value =
+    data.customer_phone || "";
+
+  document.getElementById("customer_email").value =
+    data.customer_email || "";
+
+  document.getElementById("sender_name").value =
+    data.sender_name || "";
+
+  document.getElementById("pickup_location").value =
+    data.pickup_location || "";
+
+  document.getElementById("destination").value =
+    data.destination || "";
+
+  document.getElementById("package_description").value =
+    data.package_description || "";
+
+  document.getElementById("package_type").value =
+    data.package_type || "";
+
+  document.getElementById("weight").value =
+    data.weight || "";
+
+  document.getElementById("status").value =
+    data.status || "Pending";
+
+  document.getElementById("current_location").value =
+    data.current_location || "";
+
+  document.getElementById("shipment_date").value =
+    data.shipment_date || "";
+
+  document.getElementById("estimated_delivery_date").value =
+    data.estimated_delivery_date || "";
+
+  document.getElementById("notes").value =
+    data.notes || "";
+}
+
+
+async function loadShipments() {
+
+  const { data, error } =
+    await supabaseClient
+      .from("shipments")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(50);
+
+
+  if (error) {
+
+    document.getElementById("shipments").innerHTML =
+      "<p>Error: " + error.message + "</p>";
+
+    return;
+  }
+
+
+  if (!data || data.length === 0) {
+
+    document.getElementById("shipments").innerHTML =
+      "<p>No shipments found.</p>";
+
+    return;
+  }
+
+
+  let html = `
+    <table>
+      <tr>
+        <th>Tracking</th>
+        <th>Customer</th>
+        <th>Status</th>
+        <th>Location</th>
+        <th>Destination</th>
+      </tr>
+  `;
+
+
+  data.forEach(shipment => {
+
+    html += `
+      <tr>
+        <td>${shipment.tracking_number || ""}</td>
+        <td>${shipment.customer_name || ""}</td>
+        <td>${shipment.status || ""}</td>
+        <td>${shipment.current_location || ""}</td>
+        <td>${shipment.destination || ""}</td>
+      </tr>
+    `;
+
+  });
+
+
+  html += "</table>";
+
+  document.getElementById("shipments").innerHTML =
+    html;
+}
+
+
+function showMessage(text, error) {
+
+  const element =
+    document.getElementById("message");
+
+  element.textContent = text;
+
+  element.style.color =
+    error ? "red" : "green";
+}
+
+
+loadShipments();
+
+</script>
+
+</body>
+</html>
